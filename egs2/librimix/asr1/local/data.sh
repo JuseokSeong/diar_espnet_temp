@@ -46,53 +46,53 @@ if [ ! -e "${LIBRISPEECH}" ]; then
     exit 1
 fi
 
-cdir=$PWD
+cdir=/home/js-gpu2-01/workspace_ssd/librimix_DB #$PWD
 
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     log "stage 1: Generating LibriMix to ./data/LibriMix"
 
-    git clone https://github.com/JorisCos/LibriMix ./data/LibriMix
+    # git clone https://github.com/JorisCos/LibriMix ./data/LibriMix
 
-    # Download WHAM noise data
-    if [ -z "${wham_noise}" ]; then
-        # 17.65 GB unzipping to 35 GB
-        mkdir -p ${cdir}/data/wham_noise
-        wham_noise_url=https://storage.googleapis.com/whisper-public/wham_noise.zip
-        wget --continue -O "${cdir}/data/wham_noise.zip" ${wham_noise_url}
-        num_wavs=$(find "${cdir}/data/wham_noise" -iname "*.wav" | wc -l)
-        if [ "${num_wavs}" = "4" ]; then
-            echo "'${cdir}/data/wham_noise/' already exists. Skipping..."
-        else
-            unzip "${cdir}/data/wham_noise.zip" -d "${cdir}/data/"
-        fi
-        wham_noise="${cdir}/data/wham_noise"
-    else
-        # The simulation program will write data to wham_noie,
-        # so copy it to user directory in case of permission issues.
-        rsync -r -P "${wham_noise}" "${cdir}/data/wham_noise"
-    fi
+    # # Download WHAM noise data
+    # if [ -z "${wham_noise}" ]; then
+    #     # 17.65 GB unzipping to 35 GB
+    #     mkdir -p ${cdir}/data/wham_noise
+    #     wham_noise_url=https://storage.googleapis.com/whisper-public/wham_noise.zip
+    #     wget --continue -O "${cdir}/data/wham_noise.zip" ${wham_noise_url}
+    #     num_wavs=$(find "${cdir}/data/wham_noise" -iname "*.wav" | wc -l)
+    #     if [ "${num_wavs}" = "4" ]; then
+    #         echo "'${cdir}/data/wham_noise/' already exists. Skipping..."
+    #     else
+    #         unzip "${cdir}/data/wham_noise.zip" -d "${cdir}/data/"
+    #     fi
+    #     wham_noise="${cdir}/data/wham_noise"
+    # else
+    #     # The simulation program will write data to wham_noie,
+    #     # so copy it to user directory in case of permission issues.
+    #     rsync -r -P "${wham_noise}" "${cdir}/data/wham_noise"
+    # fi
 
-    (
-    cd ./data/LibriMix
-    librimix_outdir=./libri_mix_single
+    # (
+    # cd ./data/LibriMix
+    # librimix_outdir=/home/js-gpu2-01/workspace_ssd/librimix_DB/libri_mix_single
 
 
-    python scripts/augment_train_noise.py --wham_dir ${cdir}/data/wham_noise
-    # shellcheck disable=SC2043
-    for n_src in 2;
-    do
-        metadata_dir=metadata/Libri$n_src"Mix"
-        python scripts/create_librimix_from_metadata.py --librispeech_dir $LIBRISPEECH/LibriSpeech \
-            --wham_dir ${cdir}/data/wham_noise \
-            --metadata_dir $metadata_dir \
-            --librimix_outdir $librimix_outdir \
-            --n_src $n_src \
-            --freqs ${sample_rate} \
-            --modes ${min_or_max} \
-            --types mix_clean mix_both mix_single
-     done
-    )
+    # python scripts/augment_train_noise.py --wham_dir ${cdir}/data/wham_noise
+    # # shellcheck disable=SC2043
+    # for n_src in 2;
+    # do
+    #     metadata_dir=metadata/Libri$n_src"Mix"
+    #     python scripts/create_librimix_from_metadata.py --librispeech_dir $LIBRISPEECH/LibriSpeech \
+    #         --wham_dir ${cdir}/data/wham_noise \
+    #         --metadata_dir $metadata_dir \
+    #         --librimix_outdir $librimix_outdir \
+    #         --n_src $n_src \
+    #         --freqs 8k 16k \
+    #         --modes min max \
+    #         --types mix_clean mix_both mix_single
+    #  done
+    # )
 
 fi
 
@@ -109,9 +109,9 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     mkdir -p data/test
     mkdir -p data/train
 
-    metadata_dir="data/LibriMix/libri_mix_single/Libri2Mix/wav${sample_rate}/${min_or_max}/metadata"
+    metadata_dir="/home/js-gpu2-01/workspace_ssd/librimix_DB/libri_mix_single/Libri2Mix/wav${sample_rate}/${min_or_max}/metadata"
 
-    for dset in dev test train; do
+    for dset in dev test; do
         if [ "${dset}" = "train" ]; then
             mix_f="train-*"
         else
@@ -131,6 +131,29 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
             sort -u | awk -F',' '{print $1, $5}' > data/${dset}/noise1.scp
 
+    done
+
+    for dset in train; do
+        if [ "${dset}" = "train" ]; then
+            mix_f="train-*"
+        else
+            mix_f=${dset}
+        fi
+
+        grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
+            cut -d':' -f2- | sort -u | awk -F',' '{print $1, $1}' > data/${dset}/utt2spk
+        grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
+            cut -d':' -f2- | sort -u | awk -F',' '{print $1, $1}' > data/${dset}/spk2utt
+        grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
+            cut -d':' -f2- | sort -u | awk -F',' '{print $1, $2}' > data/${dset}/wav.scp
+        grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
+            cut -d':' -f2- | sort -u | awk -F',' '{print $1, $3}' > data/${dset}/spk1.scp
+        grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
+            cut -d':' -f2- | sort -u | awk -F',' '{print $1, $4}' > data/${dset}/spk2.scp
+        grep -v mixture_ID  ${metadata_dir}/mixture_${mix_f}_mix_both.csv | \
+            cut -d':' -f2- | sort -u | awk -F',' '{print $1, $5}' > data/${dset}/noise1.scp
+
+        utils/fix_data_dir.sh data/train
     done
 
 fi
