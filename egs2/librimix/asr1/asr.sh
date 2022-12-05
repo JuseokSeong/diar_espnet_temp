@@ -152,6 +152,10 @@ asr_speech_fold_length=800 # fold_length for speech data during ASR training.
 asr_text_fold_length=150   # fold_length for text data during ASR training.
 lm_fold_length=150         # fold_length for LM training.
 
+ref_num=2
+inf_num=
+inf_num=${inf_num:=${ref_num}}
+
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>"
 
@@ -542,6 +546,11 @@ if ! "${skip_data_prep}"; then
                     done
                 fi
 
+                _spk_list=" "
+                for i in $(seq ${ref_num}); do
+                    _spk_list+="spk${i} "
+                done
+                
                 _opts=
                 if [ -e data/"${dset}"/segments ]; then
                     # "segments" is used for splitting wav files which are written in "wav".scp
@@ -551,6 +560,14 @@ if ! "${skip_data_prep}"; then
                     # Where the time is written in seconds.
                     _opts+="--segments data/${dset}/segments "
                 fi
+                for spk in ${_spk_list}; do
+                    # shellcheck disable=SC2086
+                    scripts/audio/format_wav_scp.sh --nj "${nj}" --cmd "${train_cmd}" \
+                        --out-filename "${spk}.scp" \
+                        --audio-format "${audio_format}" --fs "${fs}" ${_opts} \
+                        "data/${dset}/${spk}.scp" "${data_feats}${_suf}/${dset}" \
+                        "${data_feats}${_suf}/${dset}/logs/${spk}" "${data_feats}${_suf}/${dset}/data/${spk}"
+                done
                 # shellcheck disable=SC2086
                 scripts/audio/format_wav_scp.sh --nj "${nj}" --cmd "${train_cmd}" \
                     --audio-format "${audio_format}" --fs "${fs}" ${_opts} \
@@ -645,7 +662,13 @@ if ! "${skip_data_prep}"; then
 
         # NOTE(kamo): Not applying to test_sets to keep original data
         for dset in "${train_set}" "${valid_set}"; do
-
+            
+            _spk_list=" "
+            _scp_list=" "
+            for i in $(seq ${ref_num}); do
+                _spk_list+="spk${i} "
+                _scp_list+="spk${i}.scp "
+            done
             # Copy data dir
             utils/copy_data_dir.sh --validate_opts --non-print "${data_feats}/org/${dset}" "${data_feats}/${dset}"
             cp "${data_feats}/org/${dset}/feats_type" "${data_feats}/${dset}/feats_type"
@@ -697,7 +720,11 @@ if ! "${skip_data_prep}"; then
                 <"${data_feats}/org/${dset}/${ref_txt}" \
                     awk ' { if( NF != 1 ) print $0; } ' >"${data_feats}/${dset}/${ref_txt}"
             done
-
+            for spk in ${_spk_list}; do
+                <"${data_feats}/org/${dset}/${spk}.scp" \
+                    utils/filter_scp.pl "${data_feats}/${dset}/utt2num_samples"  \
+                    >"${data_feats}/${dset}/${spk}.scp"
+            done
             # fix_data_dir.sh leaves only utts which exist in all files
             utils/fix_data_dir.sh \
                 ${ref_text_files_str:+--utt_extra_files "${ref_text_files_str}"} \
@@ -1064,6 +1091,10 @@ if ! "${skip_train}"; then
             _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/${ref_text_files[$i]},${ref_text_names[$i]},text "
             _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/${ref_text_files[$i]},${ref_text_names[$i]},text "
         done
+        for spk in $(seq "${ref_num}"); do
+            _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/spk${spk}.scp,speech_ref${spk},${_type} "
+            _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/spk${spk}.scp,speech_ref${spk},${_type} "
+        done
 
         # shellcheck disable=SC2046,SC2086
         ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
@@ -1160,6 +1191,11 @@ if ! "${skip_train}"; then
                 log "${_split_dir}/.done exists. Spliting is skipped"
             fi
 
+            for spk in $(seq "${ref_num}"); do
+                _opts+="--train_data_path_and_name_and_type ${_split_dir}/spk${spk}.scp,speech_ref${spk},${_type} "
+                _opts+="--train_shape_file ${_split_dir}/train/speech_ref${spk}_shape "
+            done
+
             _opts+="--train_data_path_and_name_and_type ${_split_dir}/${_scp},speech,${_type} "
             _opts+="--train_shape_file ${_split_dir}/speech_shape "
             # shellcheck disable=SC2068
@@ -1171,6 +1207,11 @@ if ! "${skip_train}"; then
             _opts+="--multiple_iterator true "
 
         else
+            for spk in $(seq "${ref_num}"); do
+                _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/spk${spk}.scp,speech_ref${spk},${_type} "
+                _opts+="--train_shape_file ${asr_stats_dir}/train/speech_ref${spk}_shape "
+            done
+
             _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/${_scp},speech,${_type} "
             _opts+="--train_shape_file ${asr_stats_dir}/train/speech_shape "
             # shellcheck disable=SC2068
@@ -1180,6 +1221,13 @@ if ! "${skip_train}"; then
                 _opts+="--train_shape_file ${asr_stats_dir}/train/${ref_text_names[$i]}_shape.${token_type} "
             done
         fi
+
+
+        for spk in $(seq "${ref_num}"); do
+            _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/spk${spk}.scp,speech_ref${spk},${_type} "
+            _opts+="--valid_shape_file ${asr_stats_dir}/valid/speech_ref${spk}_shape "
+            _opts+="--fold_length ${_fold_length} "
+        done
 
         # shellcheck disable=SC2068
         for i in ${!ref_text_names[@]}; do

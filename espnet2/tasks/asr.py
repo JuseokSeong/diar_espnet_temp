@@ -429,6 +429,7 @@ class ASRTask(AbsTask):
         MAX_REFERENCE_NUM = 4
         retval = []
         retval += ["text_spk{}".format(n) for n in range(2, MAX_REFERENCE_NUM + 1)]
+        retval += ["speech_ref{}".format(n) for n in range(1, MAX_REFERENCE_NUM + 1)]
         retval = tuple(retval)
         assert check_return_type(retval)
         return retval
