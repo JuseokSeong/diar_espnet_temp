@@ -19,7 +19,7 @@ train_config2="conf/train_diar_eda_adapt.yaml"
 decode_config="conf/decode_diar_eda.yaml"
 
 pretrain_stage=true
-adapt_stage=true
+adapt_stage=false #true
 # If you want to run only one of the stages (e.g., the adaptation stage),
 # set "false" to the one you don't want to run (e.g., the pre-training stage)
 
