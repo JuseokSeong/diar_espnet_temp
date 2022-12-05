@@ -22,6 +22,6 @@ test_sets="test "
     --audio_format wav \
     --local_data_opts "--sample_rate ${sample_rate} --min_or_max ${min_or_max}" \
     --lang en \
-    --ngpu 4 \
+    --ngpu 1 \
     --enh_config ./conf/train.yaml \
     "$@"
