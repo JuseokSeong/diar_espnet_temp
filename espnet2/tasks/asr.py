@@ -40,6 +40,9 @@ from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
 from espnet2.asr.encoder.transformer_encoder_multispkr import (
     TransformerEncoder as TransformerEncoderMultiSpkr,
 )
+from espnet2.asr.encoder.transformer_encoder_diar_multispkr import (
+    TransformerEncoder as TransformerEncoderDiarMultiSpkr,
+)
 from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
 from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
 from espnet2.asr.espnet_model import ESPnetASRModel
@@ -50,6 +53,7 @@ from espnet2.asr.frontend.s3prl import S3prlFrontend
 from espnet2.asr.frontend.windowing import SlidingWindow
 from espnet2.asr.maskctc_model import MaskCTCModel
 from espnet2.asr.pit_espnet_model import ESPnetASRModel as PITESPnetModel
+from espnet2.asr.pit_diar_espnet_model import ESPnetASRModel as PITDIARESPnetModel
 from espnet2.asr.postencoder.abs_postencoder import AbsPostEncoder
 from espnet2.asr.postencoder.hugging_face_transformers_postencoder import (
     HuggingFaceTransformersPostEncoder,
@@ -115,6 +119,7 @@ model_choices = ClassChoices(
         espnet=ESPnetASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
+        pit_diar_espnet=PITDIARESPnetModel,
     ),
     type_check=AbsESPnetModel,
     default="espnet",
@@ -135,6 +140,7 @@ encoder_choices = ClassChoices(
         conformer=ConformerEncoder,
         transformer=TransformerEncoder,
         transformer_multispkr=TransformerEncoderMultiSpkr,
+        transformer_diar_multispkr=TransformerEncoderDiarMultiSpkr,
         contextual_block_transformer=ContextualBlockTransformerEncoder,
         contextual_block_conformer=ContextualBlockConformerEncoder,
         vgg_rnn=VGGRNNEncoder,

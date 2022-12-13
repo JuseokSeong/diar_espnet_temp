@@ -17,6 +17,7 @@ preprocessor_conf:
         - "text"           # no suffix for the first text
         - "text_spk2"
 
+# input_size: 2048
 encoder: transformer_multispkr
 encoder_conf:
     output_size: 256
