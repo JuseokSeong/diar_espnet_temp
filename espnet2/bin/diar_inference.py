@@ -19,7 +19,7 @@ from espnet2.enh.loss.wrappers.pit_solver import PITSolver
 from espnet2.fileio.npy_scp import NpyScpWriter
 from espnet2.fileio.sound_scp import SoundScpWriter
 from espnet2.tasks.diar import DiarizationTask
-from espnet2.tasks.enh_s2t import EnhS2TTask
+# from espnet2.tasks.enh_s2t import EnhS2TTask
 from espnet2.torch_utils.device_funcs import to_device
 from espnet2.torch_utils.set_all_random_seed import set_all_random_seed
 from espnet2.utils import config_argparse
@@ -62,7 +62,7 @@ class DiarizeSpeech:
     ):
         assert check_argument_types()
 
-        task = DiarizationTask if not enh_s2t_task else EnhS2TTask
+        task = DiarizationTask # if not enh_s2t_task else EnhS2TTask
 
         # 1. Build Diar model
         diar_model, diar_train_args = task.build_model_from_file(
